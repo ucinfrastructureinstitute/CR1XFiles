@@ -15,50 +15,63 @@ This program is intended as the baseline configuration for trail data collection
 
 **Purpose:**
 Trail monitoring program configured to log data directly to a microSD card.
+
 **Features:**
 Same sensing and scan logic as the base trail program.
 Enables storage and retrieval via external microSD media.
 Adds periodic data flushing for power stability.
+
 **Notes:**
 Useful when remote deployment requires offline data storage or limited LoggerNet connectivity.
 
 **3. trail[usingTWOvwire305] **
+
 **Purpose:**
 Trail monitoring program supporting dual VWIRE 305 analyzers.
 **Features:**
 Reads from two vibrating-wire sensor channels simultaneously.
 Synchronizes sampling between analyzers.
 Logs temperature and strain data for multiple sensors.
+
 **Notes:**
 Designed for setups with multiple VW sensors per location or when redundancy is needed.
 
 **4. trailBattVolt.CR1X**
+
 **Purpose:**
 Trail monitoring with integrated battery voltage measurement.
+
 **Features:**
 Adds periodic checks of system voltage.
 Logs power supply trends alongside environmental data.
 Alerts or flags low-voltage conditions.
+
 **Notes:**
 Recommended for long-term deployments where battery health monitoring is critical.
 
 **5. 30minOFF9secON[workinggood].CR1X**
+
 **Purpose:**
 Optimized low-power trail monitoring program with duty-cycling.
+
 **Features:**
 Powers system ON for 9 seconds every 30 minutes for data acquisition.
 Collects and logs sensor data during each ON cycle.
 Greatly reduces overall energy consumption.
+
 **Notes:**
 Verified working configuration; best suited for remote solar or battery-powered stations.
 
 **6. sisterbar.CR1X**
+
 **Purpose:**
 Sister bar monitoring program for structural or tension measurements.
+
 **Features:**
 Acquires strain and temperature readings from vibrating-wire gauges on sister bars.
 Logs data at predefined scan intervals.
 Provides baseline tension or stress monitoring.
+
 **Notes:**
 Serves as a companion configuration to trail.CR1X for additional structural measurement points.
 
