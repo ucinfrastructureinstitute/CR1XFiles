@@ -1,0 +1,124 @@
+'CR1000X Series Datalogger
+
+'<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+'Declare Variables for the VWIRE 305 at Location A
+Public DynamicFreq_A(8)
+Public Diag_A(8) As Long
+Public StaticFreq_A(8)
+Public Therm_A(8)
+Public DynStdDev_A(8)
+Public DynamicDigits(8)
+Public DynamicDigits0(8)
+Public Strain(8)
+Public BattV
+
+Units BattV=Volts
+
+'SW12 Control Variables
+Public Count As Long
+Public State As Long = 0         'Start with SW12_1 OFF
+Public OnTimeCount As Long = 0   'Counts scan ticks during ON state
+Public NANFlg As Boolean = False
+
+Const CPIAddress_A As Long = 4
+Const SysOptions_A As Long = 0
+
+'VWIRE 305 Configuration Arrays
+Dim ChanEnable_A(8) As Long =   {1,1,1,1,1,1,1,1}
+Dim ResonAmp_A(8) =             {0.0020,0.0020,0.0020,0.0020,0.0020,0.0020,0.0020,0.0020}
+Dim MinFreq_A(8) =              {450,450,450,450,450,450,450,450}
+Dim MaxFreq_A(8) =              {3500,3500,3500,3500,3500,3500,3500,3500}
+Dim OutFormat_A(8) As Long =    {0,0,0,0,0,0,0,0}
+Dim Mult_A(8) =                 {1,1,1,1,1,1,1,1}
+Dim Offset_A(8) =               {0,0,0,0,0,0,0,0}
+Dim SteinA_A(8) =               {1.4051E-03,1.4051E-03,1.4051E-03,1.4051E-03,1.4051E-03,1.4051E-03,1.4051E-03,1.4051E-03}
+Dim SteinB_A(8) =               {2.369E-04,2.369E-04,2.369E-04,2.369E-04,2.369E-04,2.369E-04,2.369E-04,2.369E-04}
+Dim SteinC_A(8) =               {1.019E-07,1.019E-07,1.019E-07,1.019E-07,1.019E-07,1.019E-07,1.019E-07,1.019E-07}
+Dim RF_MeanBins_A(8) As Long =  {5,5,5,5,5,5,5,5}
+Dim RF_AmpBins_A(8) As Long =   {5,5,5,5,5,5,5,5}
+Dim RF_LowLim_A(8) =            {290,290,290,290,290,290,290,290}
+Dim RF_HighLim_A(8) =           {6000,6000,6000,6000,6000,6000,6000,6000}
+Dim RF_Hyst_A(8) =              {1.000,1.000,1.000,1.000,1.000,1.000,1.000,1.000}
+Dim RF_Form_A(8) As Long =      {0,0,0,0,0,0,0,0}
+
+'Configure VWIRE 305
+CDM_VW300Config(VWIRE305,CPIAddress_A,SysOptions_A,ChanEnable_A, _
+ResonAmp_A,MinFreq_A,MaxFreq_A,OutFormat_A,Mult_A,Offset_A,SteinA_A,SteinB_A,SteinC_A, _
+RF_MeanBins_A,RF_AmpBins_A,RF_LowLim_A,RF_HighLim_A,RF_Hyst_A,RF_Form_A)
+
+'Battery Voltage Logging
+DataTable(Battery,True,-1)
+  DataInterval (0,1,sec,10)
+  Sample(1,BattV,FP2)
+EndTable
+
+'Dynamic Strain Logging
+DataTable(Dynamic2, true, -1)
+  DataInterval (0,1,Sec,10)
+  Sample(8,Strain(),IEEE4)
+EndTable
+
+'Static Temperature Logging
+DataTable(Static2, true, -1)
+  DataInterval (0,1,sec,10)
+  Sample(8,Therm_A(),IEEE4)
+EndTable
+
+'Start Program
+BeginProg
+
+  CPIAddModule (VWIRE305,2929,"Location A",4)
+  CPISpeed(250)
+
+  DynamicDigits0() = 0
+
+  Scan(50, msec, 500, 0)
+
+    Battery(BattV)
+    SW12(SW12_1, State, 0)
+
+    Count = Count + 1
+
+    ' OFF for 30 minutes = 36000 scans
+    ' ON for 9 seconds = 180 scans
+    If State = 0 Then
+      If Count >= 36000 Then
+        State = 1
+        Count = 0
+        OnTimeCount = 0
+      EndIf
+    ElseIf State = 1 Then
+      OnTimeCount = OnTimeCount + 1
+      If Count >= 180 AND NANFlg = False OR Count >= 10000 Then
+        State = 0       
+      EndIf
+    EndIf
+
+    ' Dynamic readings for 50 msec
+    CDM_VW300Dynamic(CPIAddress_A, DynamicFreq_A(), Diag_A())
+    DynamicDigits() = DynamicFreq_A()^2 / 1000
+    Strain() = (DynamicDigits() - DynamicDigits0()) * 4.062 * 1
+    
+    If Strain(1) = NAN Then
+      NANFlg = True
+    Else
+      NANFlg = False
+    EndIf  
+
+    'Log only after 6 sec into ON (120 scans)
+    If State = 1 AND OnTimeCount >= 160 AND NANFlg = False Then
+      CallTable Dynamic2
+      CallTable Battery
+    EndIf
+
+    ' Static readings once per second
+    If TimeIntoInterval(0,1,sec) Then
+      CDM_VW300Static(CPIAddress_A, StaticFreq_A(), Therm_A(), DynStdDev_A)
+      If State = 1 AND OnTimeCount >= 160 AND NANFlg = False Then
+        CallTable Static2
+      EndIf
+    EndIf
+
+  NextScan
+
+EndProg

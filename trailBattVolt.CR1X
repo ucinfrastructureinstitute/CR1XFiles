@@ -1,0 +1,83 @@
+'CR1000X Series Datalogger
+'======= EXAMPLE PROGRAM =======
+'GRANITE VWIRE 305 vibrating-wire analyzer
+'Program to read 20 Hz dynamic data from two GRANITE VWIRE 305 analyzers measuring eight channels
+
+'<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+'Declare Variables for the VWIRE 305 at Location A
+Public DynamicFreq_A(8)         'Dynamic Frequencies
+Public Diag_A(8) As Long 'Diagnostic Code
+Public StaticFreq_A(8)   'Static (1 Hz output) frequencies
+Public Therm_A(8)        'Thermistor readings
+Public DynStdDev_A(8)    'Std Deviation of dynamic freq during the most recent one-second
+Public DynamicDigits(8)
+Public DynamicDigits0(8)
+Public StaticDigits(8)
+Public Strain(8)
+Public BattV
+
+Units BattV=Volts
+
+Const CPIAddress_A As Long = 4
+Const SysOptions_A As Long = 0
+
+'The following arrays are used to configure the GRANITE VWIRE 305. Refer to the CDM_VW300Config
+'instruction used below
+'                                  CH1     CH2     CH3     CH4     CH5     CH6     CH7     CH8
+Dim ChanEnable_A(8) As Long =   {      1,      1,      1,      1,      1,      1,      1,      1}
+Dim ResonAmp_A(8) =             { 0.0020, 0.0020, 0.0020, 0.0020, 0.0020, 0.0020, 0.0020, 0.0020}
+Dim MinFreq_A(8) =              {    450,    450,    450,    450,    450,    450,    450,    450}
+Dim MaxFreq_A(8) =              {   3500,   3500,   3500,   3500,   3500,   3500,   3500,   3500}
+Dim OutFormat_A(8) As Long =    {      0,      0,      0,      0,      0,      0,      0,      0}
+Dim Mult_A(8) =                 {      1,      1,      1,      1,      1,      1,      1,      1}
+Dim Offset_A(8) =               {      0,      0,      0,      0,      0,      0,      0,      0}
+Dim SteinA_A(8) =               {      1.4051E-03,      1.4051E-03,      1.4051E-03,      1.4051E-03,      1.4051E-03,      1.4051E-03,      1.4051E-03,      1.4051E-03}
+Dim SteinB_A(8) =               {      2.369E-04,       2.369E-04,       2.369E-04,       2.369E-04,       2.369E-04,       2.369E-04,       2.369E-04,       2.369E-04}
+Dim SteinC_A(8) =               {      1.019E-07,       1.019E-07,       1.019E-07,       1.019E-07,       1.019E-07,       1.019E-07,       1.019E-07,       1.019E-07}
+Dim RF_MeanBins_A(8) As Long =  {      5,      5,      5,      5,      5,      5,      5,      5}
+Dim RF_AmpBins_A(8) As Long =   {      5,      5,      5,      5,      5,      5,      5,      5}
+Dim RF_LowLim_A(8) =            {    290,    290,    290,    290,    290,    290,    290,    290}
+Dim RF_HighLim_A(8) =           {   6000,   6000,   6000,   6000,   6000,   6000,   6000,   6000}
+Dim RF_Hyst_A(8) =              {  1.000,  1.000,  1.000,  1.000,  1.000,  1.000,  1.000,  1.000}
+Dim RF_Form_A(8) As Long =      {      0,      0,      0,      0,      0,      0,      0,      0}
+
+'Configure the CDM-VW300 series device
+CDM_VW300Config(VWIRE305,CPIAddress_A,SysOptions_A,ChanEnable_A, _
+ResonAmp_A,MinFreq_A,MaxFreq_A,OutFormat_A,Mult_A,Offset_A,SteinA_A,SteinB_A,SteinC_A, _
+RF_MeanBins_A,RF_AmpBins_A,RF_LowLim_A,RF_HighLim_A,RF_Hyst_A,RF_Form_A)
+
+DataTable(Battery,True,-1)
+  DataInterval (0,1,Sec,10)
+  Sample(1,BattV,FP2)
+EndTable
+
+'Define Data tables
+DataTable(Dynamic1, true, -1)
+  Sample(8,Strain(),IEEE4)           'Dynamic Frequency (20 Hz output) from Location A
+EndTable
+
+DataTable(Static1, true, -1)
+  DataInterval (0,1,Sec,10)          
+  Sample(8,Therm_A(),IEEE4)          
+EndTable
+
+'Define the program
+BeginProg
+
+  CPIAddModule (VWIRE305,2929,"Location A",4)  'This will program the CPI Address into the Location A module
+  CPISpeed(250)            '250 kbps, how fast the datalogger will operate the CPI bus.
+
+  Scan(50, msec, 500, 0)   '20 Hz = 50 msec scan rate
+      Battery(BattV)
+      CDM_VW300Dynamic(CPIAddress_A, DynamicFreq_A(), Diag_A())   'Get dynamic readings from Location A
+      DynamicDigits()=DynamicFreq_A()^2/1000
+      Strain()=(DynamicDigits()-DynamicDigits0())*4.062*1
+      CallTable Dynamic1
+    If TimeIntoInterval(0,1,sec) Then  
+      CDM_VW300Static(CPIAddress_A, StaticFreq_A(), Therm_A(), DynStdDev_A) 'Get static data from Location A
+    EndIf
+    CallTable Static1
+    Calltable Battery
+  NextScan
+
+EndProg
