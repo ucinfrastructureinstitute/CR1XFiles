@@ -1,14 +1,18 @@
 ****1. trail.CR1X**
+
 **Purpose:****
 Basic template trail monitoring program.
+
 **Features:**
 Reads sensor inputs connected to the datalogger.
 Applies scan intervals and logging conditions.
 Stores data in a table for later retrieval.
+
 **Notes:**
 This program is intended as the baseline configuration for trail data collection.
 
 **2. trail[microSDcard].CR1X**
+
 **Purpose:**
 Trail monitoring program configured to log data directly to a microSD card.
 **Features:**
