@@ -12,6 +12,10 @@ Public DynamicDigits0(8)
 Public Strain(8)
 Public BattV
 
+Public OutStatBatt, LastFileNameBatt As String * 50
+Public OutStatDyn, LastFileNameDyn As String * 50
+Public OutStatStat, LastFileNameStat As String * 50
+
 Units BattV=Volts
 
 'SW12 Control Variables
@@ -47,19 +51,22 @@ ResonAmp_A,MinFreq_A,MaxFreq_A,OutFormat_A,Mult_A,Offset_A,SteinA_A,SteinB_A,Ste
 RF_MeanBins_A,RF_AmpBins_A,RF_LowLim_A,RF_HighLim_A,RF_Hyst_A,RF_Form_A)
 
 'Battery Voltage Logging
-DataTable(Battery,True,-1)
+DataTable(Battery1,True,-1)
+  TableFile ("CRD:Battery",64,-1,0,24,Hr,OutStatBatt,LastFileNameDyn)
   DataInterval (0,1,sec,10)
   Sample(1,BattV,FP2)
 EndTable
 
 'Dynamic Strain Logging
-DataTable(Dynamic2, true, -1)
+DataTable(Dynamic1, true, -1)
+  TableFile ("CRD:Dynamic",64,-1,0,24,Hr,OutStatDyn,LastFileNameDyn)
   DataInterval (0,1,Sec,10)
   Sample(8,Strain(),IEEE4)
 EndTable
 
 'Static Temperature Logging
-DataTable(Static2, true, -1)
+DataTable(Static1, true, -1)
+  TableFile ("CRD:Static",64,-1,0,24,Hr,OutStatStat,LastFileNameDyn)
   DataInterval (0,1,sec,10)
   Sample(8,Therm_A(),IEEE4)
 EndTable
@@ -107,15 +114,15 @@ BeginProg
 
     'Log only after 6 sec into ON (120 scans)
     If State = 1 AND OnTimeCount >= 160 AND NANFlg = False Then
-      CallTable Dynamic2
-      CallTable Battery
+      CallTable Dynamic1
+      CallTable Battery1
     EndIf
 
     ' Static readings once per second
     If TimeIntoInterval(0,1,sec) Then
       CDM_VW300Static(CPIAddress_A, StaticFreq_A(), Therm_A(), DynStdDev_A)
       If State = 1 AND OnTimeCount >= 160 AND NANFlg = False Then
-        CallTable Static2
+        CallTable Static1
       EndIf
     EndIf
 
